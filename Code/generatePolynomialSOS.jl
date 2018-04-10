@@ -9,57 +9,69 @@
 workspace()
 #include("../../src/Solver.jl")
 using JuMP, Mosek, JLD
-
 rng = MersenneTwister(12345)
 dirPath = "./TestProblems/PolySOS/"
 nn = 25
 
+function vecPos(n,i,j)
+  ((i > n) || (j > n)) && error("Your index is outside the matrix dimension.")
+  return (j-1)*n+i
+end
 
  for iii =1:1:nn
-  # set dimension of ellipsoids
-  n = 2
-  # choose number of elipsoids
-  ne = rand(rng,2:10)
-  # create random ellipsoid data
-  Ae = []
-  be = []
-  ce = []
-  Pe = []
-  xce = []
-  for kkk=1:ne
-    # create mapping matrix P that distorts unit circle by scaling principal axis and rotating
-    # define center of ellisoid xc
-    Peigs = rand(rng,0.25:0.01:8,2)
-    theta = rand(rng,-pi:0.01:pi)
-    P = diagm(Peigs)
-    R = [cos(theta) -sin(theta); sin(theta) cos(theta)]
-    P = R*P*R'
-    xc = rand(rng,-10:10,2,1)
+  # number of polynomial variables
+  np = 2
+  # degree of polynomial
+  d = 4
+  # randomly create 2d+1 polynomial coefficients starting with p_0 up to p_2d
+  p = rand(rng,-5:5,2*d+1,1)
+  #p = [5.;4;6;4;1]
 
-    # determine corresponding matrices for sublevel representation f(x)=x'Ax+2x'b+c
-    Ainv = P\eye(2)
-    A = Ainv*Ainv
-    b = -A*xc
-    c = (xc'A*xc-1)[1]
-    push!(Ae,A)
-    push!(be,b)
-    push!(ce,c)
-    push!(Pe,P)
-    push!(xce,xc)
+  # determine sdp problem matrices
+  n = d+1
+  P = spzeros(n^2,n^2)
+  q = spzeros(n^2,1)
+  Aa = spzeros(2*d+1,n^2)
+  ba = p
+
+  # A matrix for univariate case
+  for k=0:2*d
+    for i=0:d, j=0:d
+      if i+j == k
+        if i<j
+          Aa[k+1,vecPos(n,j+1,i+1)] = Aa[k+1,vecPos(n,j+1,i+1)] + 1
+        else
+          Aa[k+1,vecPos(n,i+1,j+1)] = Aa[k+1,vecPos(n,i+1,j+1)] + 1
+        end
+      end
+    end
   end
+
+
+  # # A matrix for bivariate case (x,y)
+  # for k=0:2*d
+  #   for y=0:d, x=0:d
+  #     if i+j == k
+  #       if i<j
+  #         Aa[k+1,vecPos(n,j+1,i+1)] = Aa[k+1,vecPos(n,j+1,i+1)] + 1
+  #       else
+  #         Aa[k+1,vecPos(n,i+1,j+1)] = Aa[k+1,vecPos(n,i+1,j+1)] + 1
+  #       end
+  #     end
+  #   end
+  # end
 
   #solve accurately once with mosek
   model = Model(solver=MosekSolver())
-  @variable(model, xc[1:2])
-  @variable(model, t)
-  @variable(model, g)
-  @variable(model, tau1 >= 0)
-  @variable(model, tau2 >= 0)
-
-  @objective(model, Min, t)
-  @SDconstraint(model,[eye(2) xc;xc' t+g] >= 0)
-  @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau1*[Ae[1] be[1]; be[1]' ce[1]])
-  @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau2*[Ae[2] be[2]; be[2]' ce[2]])
+  @variable(model, Q[1:n,1:n], SDP)
+  q = vec(Q)
+  @objective(model, Min, 0)
+  @constraint(model,Aa*q.==ba)
+  # @constraint(model,Q[3,3] == 1)
+  # @constraint(model,2*Q[2,3] == 4)
+  # @constraint(model,Q[2,2] + 2*Q[1,3] == 6)
+  # @constraint(model,2*Q[1,2] == 4)
+  # @constraint(model,Q[1,1] == 5)
   status = JuMP.solve(model)
 
   # correct optimal objective value since slightly different problem is solved
