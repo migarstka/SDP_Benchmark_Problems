@@ -3,7 +3,7 @@ In the following a set of benchmark problems is presented. These convex optimiza
 such as portfolio optimization, graph theory, robust control, or polynomial optimization. These problems were collected to benchmark conic solvers 
 against each other and to study the performance gains of various extensions to our solver. The problems are in the following format:
 ```
-min 1/2x'Px+q'x
+min 1/2x'Px+q'x+r
 s.t. Ax+s=b,
      s in K
 ```
@@ -18,6 +18,18 @@ the non-negative orthant, a set of second order cones, and a set of positive sem
 7. Random SDP with Quadratic Objective
 8. (Maxcut problem in Graph Theory)
 9. (Reducing Diagonal Dominance of a Kernel Matrix)
+
+The problems are available as Julia JLD files and Matlab MAT files. Each file contains at least the following variables (some contain extra problem information):
+
+Variable | Description |
+--- | --- |
+m,n | problem dimension | 
+A,b | constraint data | 
+P,q,r | objective function data | 
+objTrue | solution to problem from MOSEK with standard tolerance |
+problemType | descriptive name of the problem | 
+problemName | short problem tag with number |
+Kf, Kl, Kq, Ks | dimensions of the cone K |
 
 ## Installation / Usage
 
