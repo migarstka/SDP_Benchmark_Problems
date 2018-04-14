@@ -26,7 +26,10 @@ P,q,r | objective function data |
 objTrue | solution to problem from MOSEK with standard tolerance |
 problemType | descriptive name of the problem | 
 problemName | short problem tag with number |
-Kf, Kl, Kq, Ks | dimensions of the cone K |
+Kf | Number of variables in zero-cone |
+Kl | Number of variables in nonnegative orthant |
+Kq | Dimensions of second-order cone variables |
+Ks | Dimensions of semidefinite cone variables |
 
 ## Installation / Usage
 
