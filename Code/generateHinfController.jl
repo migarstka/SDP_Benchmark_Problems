@@ -3,10 +3,10 @@
 # solution from MOSEK
 
 
-workspace()
-include("./Helper.jl")
+# workspace()
+# include("./Helper.jl")
 
-using JuMP, Mosek, Base.Test, Helper, JLD
+# using JuMP, Mosek, Base.Test, Helper, JLD
 # Create number of Lyapunov stable controller and a number of Hinf performance controller
 nnLyapunov = 25
 nnHinf = 25
@@ -93,8 +93,8 @@ iii = 1
   # choose number of outputs for z(t)
   nz = rand(rng,3:20)
   #choose number of inputs for u(t) and w(t)
-  nu = rand(rng,2:20)
-  nw = rand(rng,2:20)
+  nu = rand(rng,3:20)
+  nw = rand(rng,3:20)
   # create system matrices (create system in such a way that a stabilizing controller K exists)
   A = randn(rng,n,n)
 
@@ -112,8 +112,8 @@ iii = 1
     isControllable = (rank(full(Con)) == n)
   end
   Bw = eye(n,nw)
-  Cz = rand(rng,nz,n)
-  Dzw = rand(nz,nw)
+  Cz = randn(rng,nz,n)
+  Dzw = randn(nz,nw)
   Dzu = eye(nz,nu)
 
 
@@ -177,7 +177,7 @@ iii = 1
 
   # discard all the weird cases with stalling solver or unstable eigenvalues
   if status != :Optimal || unstableK
-    warning("Bad problem: Try again!")
+    warn("Bad problem: Try again!")
     continue
   end
 
