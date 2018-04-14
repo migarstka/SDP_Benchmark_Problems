@@ -1,4 +1,4 @@
-module Helper
+module HelperFunctions
 
 export generatePosDefMatrix, transposeVectorized
 

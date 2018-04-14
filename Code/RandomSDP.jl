@@ -15,7 +15,7 @@ workspace()
 include("./Helper.jl")
 include("../../OSSDP/Code/src/Solver.jl")
 
-using JuMP, Mosek, JLD, Helper, OSSDP, Base.Test
+using JuMP, Mosek, JLD, HelperFunctions, OSSDP, Base.Test
 
 rng = MersenneTwister(12345)
 dirPath = "../DataFiles/Julia/SDPQuad/"

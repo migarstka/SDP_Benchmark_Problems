@@ -6,7 +6,7 @@
 # workspace()
 # include("./Helper.jl")
 
-# using JuMP, Mosek, Base.Test, Helper, JLD
+# using JuMP, Mosek, Base.Test, HelperFunctions, JLD
 # Create number of Lyapunov stable controller and a number of Hinf performance controller
 nnLyapunov = 40
 nnHinf = 40
