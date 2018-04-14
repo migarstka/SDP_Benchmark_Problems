@@ -8,8 +8,8 @@
 
 # using JuMP, Mosek, Base.Test, Helper, JLD
 # Create number of Lyapunov stable controller and a number of Hinf performance controller
-nnLyapunov = 25
-nnHinf = 25
+nnLyapunov = 40
+nnHinf = 40
 
 function LyapunovStabilityLMI(A,Bu)
   n = size(A,1)
