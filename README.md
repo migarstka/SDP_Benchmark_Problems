@@ -9,15 +9,12 @@ s.t. Ax+s=b,
 ```
 with decision variables x in Rn, s in Rm and data matrices P=P'>=0, q in Rn, A in Rm×n, and b in Rm. The convex cone K is a composition of the zero cone, 
 the non-negative orthant, a set of second order cones, and a set of positive semidefinite cones. The following list gives an overview over the considered problems:
-1. Nearest Correlation Matrix
-2. Smallest Sphere around multiple Ellipsoids
-3. LMI-based Robust Control Problems
-4. Polynomial Sum-Of-Squares Problems
+1. Random SDP with Quadratic Objective
+2. Nearest Correlation Matrix
+3. Smallest Sphere around multiple Ellipsoids
+4. LMI-based Robust Control Problems
 5. Semidefinite Relaxation of MIQO Problems
 6. Lovasz Theta Function in Graph Theory
-7. Random SDP with Quadratic Objective
-8. (Maxcut problem in Graph Theory)
-9. (Reducing Diagonal Dominance of a Kernel Matrix)
 
 The problems are available as Julia JLD files and Matlab MAT files. Each file contains at least the following variables (some contain extra problem information):
 
