@@ -4,12 +4,12 @@
 
 
 # workspace()
-# include("./Helper.jl")
+ # include("./Helper.jl")
 
 # using JuMP, Mosek, Base.Test, HelperFunctions, JLD
 # Create number of Lyapunov stable controller and a number of Hinf performance controller
-nnLyapunov = 40
-nnHinf = 40
+nnLyapunov = 0
+nnHinf = 25
 
 function LyapunovStabilityLMI(A,Bu)
   n = size(A,1)
@@ -19,9 +19,10 @@ function LyapunovStabilityLMI(A,Bu)
   BuY = kron(eye(n),Bu)
   YtBut = kron(Bu,eye(n))
   # turn YtBut*vec(Y') into YtBut* vec(Y) by permuting cols of YtBut
-  YtBut = Helper.transposeVectorized(YtBut,n,nu) #provide dimension of Y'
+  YtBut = HelperFunctions.transposeVectorized(YtBut,n,nu) #provide dimension of Y'
 
-  ba = spzeros(n^2,1)
+  # to get strict inequality and prevent trivial solution P=0
+  ba = vec(0.001*speye(n))
 
   return [AP+PAt BuY+YtBut], ba
 end
@@ -83,18 +84,19 @@ end
 
 rng = MersenneTwister(125)
 dirPath = "../DataFiles/Julia/RobustControl/"
+!ispath(dirPath) && mkdir(dirPath)
 
 iii = 1
  while iii <=(nnLyapunov+nnHinf)
 
   # create random LTI system
   # choose number of states x(t)
-  n = rand(rng,3:20)
+  n = rand(rng,3:6)
   # choose number of outputs for z(t)
-  nz = rand(rng,3:20)
+  nz = rand(rng,3:6)
   #choose number of inputs for u(t) and w(t)
-  nu = rand(rng,3:20)
-  nw = rand(rng,3:20)
+  nu = rand(rng,3:6)
+  nw = rand(rng,3:6)
   # create system matrices (create system in such a way that a stabilizing controller K exists)
   A = randn(rng,n,n)
 
@@ -124,13 +126,25 @@ iii = 1
     Pa = spzeros(n^2+nu*n,n^2+nu*n)
     qa = spzeros(n^2+nu*n,1)
     nLMI = n
+    # add P > 0 constraint
+    Aa2 = [Aa; -speye(n^2) spzeros(n^2,nu*n)]
+    ba2 = [ba;spzeros(n^2)]
   else
     # LMI 2): Hinf performance:
     Aa,ba = HinfPerformanceLMI(A,Bu,Bw,Cz,Dzw,Dzu)
     nLMI = n+nw+nz
     Pa = spzeros(n^2+nu*n+1,n^2+nu*n+1)
-    qa = spzeros(n^2+nu*n+1,1)
+    qa = [spzeros(n^2+nu*n,1);1]
+    # add P > 0 constraint
+    Aa2 = [Aa; -speye(n^2) spzeros(n^2,nu*n+1)]
+    ba2 = [ba;spzeros(n^2)]
   end
+  r = 0.
+    # specify cone
+  Kf = 0
+  Kl = 0
+  Kq = []
+  Ks = [nLMI^2 n^2]
 
   # # solve accurately once with mosek
   # model = Model(solver=MosekSolver())
@@ -191,9 +205,10 @@ iii = 1
   if iii < 10
     nr = "0$(iii)"
   end
-  iii <= nnLyapunov ? pType = "LyapunovStability" : pType = "HinfPerformance"
+  iii <= nnLyapunov ? problemName = "Lyap"*nr : problemName = "Hinf"*nr
   fn = "RobustControl"*nr*".jld"
-  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",Pa,"q",qa,"objTrue",objTrue,"K",K2,"ProblemType",pType)
+  problemType = "LMI Robust Control Problem"
+  JLD.save(dirPath*fn,"n",size(Aa2,2),"m",size(Aa2,1),"A",Aa2,"b",ba2,"P",Pa,"q",qa,"r",r,"objTrue",objTrue,"K",K2,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nnLyapunov+nnHinf) completed!")
   iii+=1
 end

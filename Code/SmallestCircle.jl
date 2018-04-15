@@ -7,14 +7,16 @@
 #         [I, xc; xc' t+γ] ⪴ 0
 #         τi ≥ 0, i+1,...,k
 
-workspace()
-#include("../../src/Solver.jl")
-using JuMP, Mosek, JLD
+# workspace()
+# #include("../../src/Solver.jl")
+# using JuMP, Mosek, JLD
 #using PyPlot, PyCall
 #@pyimport matplotlib.patches as patch
-s
+
 rng = MersenneTwister(12345)
-dirPath = "./TestProblems/SmallestCircle/"
+dirPath = "../DataFiles/Julia/SmallestCircle/"
+!ispath(dirPath) && mkdir(dirPath)
+
 nn = 25
 
 
@@ -22,7 +24,7 @@ nn = 25
   # set dimension of ellipsoids
   n = 2
   # choose number of elipsoids
-  ne = rand(rng,2:10)
+  ne = rand(rng,2:15)
   # create random ellipsoid data
   Ae = []
   be = []
@@ -32,12 +34,12 @@ nn = 25
   for kkk=1:ne
     # create mapping matrix P that distorts unit circle by scaling principal axis and rotating
     # define center of ellisoid xc
-    Peigs = rand(rng,0.25:0.01:8,2)
-    theta = rand(rng,-pi:0.01:pi)
+    Peigs = rand(rng,2)*(8-0.25)+0.25
+    theta = rand(rng)*2*pi-pi
     P = diagm(Peigs)
     R = [cos(theta) -sin(theta); sin(theta) cos(theta)]
     P = R*P*R'
-    xc = rand(rng,-10:10,2,1)
+    xc = rand(rng,2,1)*(10-(-10))-10
 
     # determine corresponding matrices for sublevel representation f(x)=x'Ax+2x'b+c
     Ainv = P\eye(2)
@@ -106,7 +108,12 @@ nn = 25
 
   Pa = spzeros(size(Aa,2),size(Aa,2))
   qa = [1;zeros(size(Aa,2)-1)]
-
+  ra = 0.
+  # define cone dimensions
+  Kf = 0
+  Kl = ne
+  Kq = []
+  Ks = dimLMI^2*ones(ne+1)
   # K = OSSDPTypes.Cone(0,ne,[],dimLMI^2*ones(ne+1))
   # setOFF = OSSDPSettings(rho=0.1,sigma=1e-6,alpha=1.6,max_iter=5000,verbose=true,checkTermination=1,scaling = 0,eps_abs = 1e-5,eps_rel=1e-5,adaptive_rho=false)
   # res1,nothing = OSSDP.solve(Pa,qa,Aa,ba,K,setOFF)
@@ -153,11 +160,10 @@ nn = 25
   @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau2*[Ae[2] be[2]; be[2]' ce[2]])
   status = JuMP.solve(model)
 
-  # correct optimal objective value since slightly different problem is solved
   objTrue = getobjectivevalue(model)
   xc = getvalue(xc)
   g = getvalue(g)
-  r = sqrt(xc'*xc-g)
+  radius = sqrt(xc'*xc-g)
 
   # println("Objective value: ",objTrue)
   # println("x = ", getvalue(x))
@@ -166,9 +172,10 @@ nn = 25
   if iii < 10
     nr = "0$(iii)"
   end
-
+  problemType = "Smallest Circle around ellipsoids"
+  problemName = "SmallestCircle"*nr
   fn = "SmallestCircle"*nr*".jld"
-  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",Pa,"q",qa,"objTrue",objTrue,"r",r,"xc",xc)
+  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",Pa,"q",qa,"r",ra,"objTrue",objTrue,"radius",radius,"xc",xc,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nn) completed!")
 end
 

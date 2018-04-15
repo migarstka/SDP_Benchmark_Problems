@@ -6,10 +6,13 @@
 # s.t.    Xii = 1
 #         X ⪴ 0
 
-workspace()
-using JLD, JuMP, Mosek
+# workspace()
+# using JLD, JuMP, Mosek, Distributions
 
-
+# specify number of problems that start with matrix C as a perturbed correlation matrix and problems where C is a random matrix
+nnCorr = 25
+nnRand = 25
+nn = nnCorr+nnRand
 # this function creates a matrix A that slices out the diagonal entries Xii of a vectorized square matrix x=vec(X)
 function createDiagonalExtractor(n)
   A = spzeros(n,n^2)
@@ -47,18 +50,25 @@ function randomCorrMatrix(d, eta)
 end
 
 rng = MersenneTwister(12345)
-dirPath = "./TestProblems/ClosestCorr/"
-nn = 25
+dirPath = "../DataFiles/Julia/ClosestCorr/"
+!ispath(dirPath) && mkdir(dirPath)
 
 
- for iii =1:1:nn
+
+ for iii =26:1:nn
   # choose size of problem
   n = rand(rng,6:40)
   eta = abs(randn(rng))
   # create random correlation matrix and perturb it
-  C = randomCorrMatrix(n,eta)
-  E  = randn(n,n)*1e-1
-  C = C + (E + E')/2
+  if iii<=nnCorr
+    C = randomCorrMatrix(n,eta)
+    E  = randn(n,n)*1e-1
+    C = C + (E + E')/2
+  else
+    C = randn(rng,n,n)
+  end
+
+
   c = vec(C)
 
   isposdef(C) && warn("The perturbed correlation matrix is still pos def.")
@@ -75,10 +85,15 @@ nn = 25
 
   P = speye(n2)
   q = -vec(C)
+  r = 0.5*vec(C)'*vec(C)
   b = [ones(n);zeros(n2)]
   A = createDiagonalExtractor(n)
   Aa = [A; -speye(n2)]
-
+  # specify cone
+  Kf = n
+  Kl = 0
+  Kq = []
+  Ks = [n^2]
   # # solve accurately once with mosek
   model = Model(solver=MosekSolver())
   @variable(model, X[1:n,1:n], SDP)
@@ -103,7 +118,10 @@ nn = 25
   end
 
   fn = "ClosestCorr"*nr*".jld"
-  JLD.save(dirPath*fn,"n",n,"m",m,"A",Aa,"b",b,"P",P,"q",q,"C",C,"objTrue",objCorrected,"solTrue",solTrue)
+  problemType = "Closest Correlation Matrix"
+  problemName = "ClosestCorr"*nr
+
+  JLD.save(dirPath*fn,"n",n,"m",m,"A",Aa,"b",b,"P",P,"q",q,"r",r,"C",C,"objTrue",objCorrected,"solTrue",solTrue,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nn) completed!")
 end
 

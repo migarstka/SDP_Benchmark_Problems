@@ -7,8 +7,8 @@
 #        X_ij = 1, if (i,j) ∈ E
 #        X ⪴ 0
 
-workspace()
-using JLD, JuMP, Mosek
+# workspace()
+# using JLD, JuMP, Mosek
 
 
 
@@ -30,7 +30,7 @@ end
 # creates a random symmetric edge matrix with zeros on the diagonal and 1 as nonzero entries
 function createRandomEdgeMatrix(rng,n,density)
   E  = full(Symmetric(sprand(rng,n,n,density)))
-  map!(x->(x!=0 ? x=1. : x=0.),E),E
+  map!(x->(x!=0 ? x=1. : x=0.),E,E)
   for iii=1:n
     E[iii,iii] = 0
   end
@@ -38,14 +38,18 @@ function createRandomEdgeMatrix(rng,n,density)
 end
 
 rng = MersenneTwister(12345)
-dirPath = "./TestProblems/Lovasz/"
+dirPath = "../DataFiles/Julia/Lovasz/"
+!ispath(dirPath) && mkdir(dirPath)
+
 nn = 25
 
 
  for iii =1:1:nn
   # choose size of problem
-  n = rand(rng,10:100)
-  density = rand(rng,0.3:0.1:0.8)
+  n = rand(rng,10:30)
+  dmin = 0.1
+  dmax = 0.9
+  density = rand(rng)*(dmax-dmin)+dmin
 
   # create random edge matrix E for graph
   E = createRandomEdgeMatrix(rng,n,density)
@@ -64,15 +68,20 @@ nn = 25
 
   # put problem into solver format
   q = -vec(J)
-  P = spzeros(n^2)
-
+  P = spzeros(n^2,n^2)
+  r = 0.
   A1 = vec(speye(n))'
   A2 = createNonzeroExtractor(E)
   A3 = -speye(n^2)
 
   Aa = [A1;A2;A3]
-  ba = [1;zeros(nz+n^2)]
+  ba = [1;spzeros(nz+n^2)]
 
+  # specify cone
+  Kf = 1+nz
+  Kl = 0
+  Kq = []
+  Ks = [n^2]
 
   # # solve accurately once with mosek
   model = Model(solver=MosekSolver())
@@ -83,7 +92,8 @@ nn = 25
   @constraint(model, A2*x .== 0)
   status = JuMP.solve(model)
 
-  objTrue = getobjectivevalue(model)
+  # objective value wit minus since it's a max-objective
+  objTrue = -getobjectivevalue(model)
   solTrue = getvalue(x)
   # println("Objective value: ",objTrue)
   # println("Corrected objective value: ", objCorrected)
@@ -93,9 +103,11 @@ nn = 25
   if iii < 10
     nr = "0$(iii)"
   end
+  problemType = "Lovasz Theta Function"
+  problemName = "Lovasz"*nr
 
   fn = "Lovasz"*nr*".jld"
-  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",P,"q",q,"E",E,"objTrue",objTrue,"solTrue",solTrue)
+  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",P,"q",q,"r",r,"E",E,"objTrue",objTrue,"solTrue",solTrue,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nn) completed!")
 end
 

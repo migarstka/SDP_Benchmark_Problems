@@ -11,24 +11,25 @@
 # A) Create problems like Ax+s=b, mat(S) in S+
 # B) Create problems like <Ai,X> = bi, X in S+
 
-workspace()
-include("./Helper.jl")
-include("../../OSSDP/Code/src/Solver.jl")
+# workspace()
+# include("./Helper.jl")
+# include("../../OSSDP/Code/src/Solver.jl")
 
-using JuMP, Mosek, JLD, HelperFunctions, OSSDP, Base.Test
+# using JuMP, Mosek, JLD, HelperFunctions, OSSDP, Base.Test
 
 rng = MersenneTwister(12345)
 dirPath = "../DataFiles/Julia/SDPQuad/"
+!ispath(dirPath) && mkdir(dirPath)
 nn = 45
 
-  @testset "Random SDP Mosek vs. QOCS" begin
+  # @testset "Random SDP Mosek vs. QOCS" begin
 
  for iii =1:1:nn
   # choose size of problem
   n = rand(rng,10:100)
-  r = rand(rng,2:10)
+  r = rand(rng,2:15)
   m = r^2
-  A = zeros(m,n)
+  A = spzeros(m,n)
   # construct A with several symmetric Ai that are vectorized and make the cols of A
   for kkk=1:n
     Ai = sprandn(rng,r,r,0.4)
@@ -57,6 +58,11 @@ nn = 45
   Ytrue = generatePosDefMatrix(r,rng)
   ytrue = vec(Ytrue)
   q = (-P*xtrue -  A'*ytrue)[:]
+  ra = 0.
+  Kf = 0
+  Kl = 0
+  Kq = []
+  Ks = [r^2]
 
   iii<=30 && (PhalfInvQ=Phalf\q)
 
@@ -119,9 +125,12 @@ nn = 45
 
 
   fn = "SDPQuad"*nr*".jld"
-  JLD.save(dirPath*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"objTrue",objTrue,"solTrue",solTrue)
+  problemType = "Random SDP with quadratic Objective"
+  problemName = "RandomSDP"*nr
+
+  JLD.save(dirPath*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",ra,"objTrue",objTrue,"solTrue",solTrue,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nn) completed!")
 end
-  end
+  # end
 
 
