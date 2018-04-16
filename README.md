@@ -23,7 +23,7 @@ Variable | Description |Type
 m,n | problem dimension | Int |
 A,b | constraint data |  SparseMatrixCSC, Vector |
 P,q,r | objective function data |  SparseMatrixCSC, Vector, Float |
-objTrue | solution to problem from MOSEK with standard tolerance | Float |
+objTrue | optimal obj value from MOSEK with standard tolerance | Float |
 problemType | descriptive name of the problem | String |
 problemName | short problem tag with number | String |
 Kf | Number of variables in zero-cone | Int |
