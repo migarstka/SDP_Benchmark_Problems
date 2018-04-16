@@ -29,7 +29,7 @@ problemName | short problem tag with number | String |
 Kf | Number of variables in zero-cone | Int |
 Kl | Number of variables in nonnegative orthant | Int |
 Kq | Dimensions of second-order cone variables | Array{Int} |
-Ks | Dimensions of semidefinite cone variables | Array{Int} |
+Ks | Dimensions of positive semidefinite cone variables | Array{Int} |
 
 The `Code`folder contains the Julia scripts used to generate the `.jld`-files. Furthermore, the script `convertToMAT.jl`can be used to convert `.jld`-files into Matlab `.mat`-files.
 
