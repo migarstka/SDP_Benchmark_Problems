@@ -62,4 +62,4 @@ objTrue = data["objTrue"]
 This project is licensed under the Apache License - see the [LICENSE.md](LICENSE.md) file for details.
 
 ## Contact
-Send an email :email: to [Michael Garstka](mailto:michael.garstka@eng.ox.ac.uk) :rocket:!	
+For questions or suggestions for other psd-problems (especially with quadratic cost), send an email :email: to [Michael Garstka](mailto:michael.garstka@eng.ox.ac.uk) :rocket:!	
