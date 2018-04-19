@@ -16,7 +16,7 @@ the non-negative orthant, a set of second order cones, and a set of positive sem
 5. Semidefinite Relaxation of MIQO Problems
 6. Lovasz Theta Function in Graph Theory
 
-The problems are available as Julia JLD files and Matlab MAT files (see respective directories). Each file describes one problem and contains at least the following variables (some contain extra problem information):
+For more information about the problems check [the Documentation](Documentation.pdf). The problems are available as Julia JLD files and Matlab MAT files (see respective directories). Each file describes one problem and contains at least the following variables (some contain extra problem information):
 
 Variable | Description |Type
 --- | --- | --- |
