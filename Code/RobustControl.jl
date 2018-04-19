@@ -3,11 +3,11 @@
 # solution from MOSEK
 
 
-# workspace()
- # include("./Helper.jl")
+ workspace()
+ include("./Helper.jl")
 
 # using JuMP, Mosek, Base.Test, HelperFunctions, JLD
-# Create number of Lyapunov stable controller and a number of Hinf performance controller
+# Create number of Lyapunov stable controller and a number of Hinf performance controller problems
 nnLyapunov = 0
 nnHinf = 25
 
@@ -22,7 +22,7 @@ function LyapunovStabilityLMI(A,Bu)
   YtBut = HelperFunctions.transposeVectorized(YtBut,n,nu) #provide dimension of Y'
 
   # to get strict inequality and prevent trivial solution P=0
-  ba = vec(0.001*speye(n))
+  ba = vec(-1e-8*speye(n))
 
   return [AP+PAt BuY+YtBut], ba
 end
@@ -75,7 +75,8 @@ function HinfPerformanceLMI(A,Bu,Bw,Cz,Dzw,Dzu)
   Ba = [zeros(n,n) -Bw zeros(n,nz);
       -Bw' zeros(nw,nw) -Dzw';
       zeros(nz,n) -Dzw zeros(nz,nz)]
-
+  # add matrix with small eigenvalues to right hand side to achieve a strict inequality
+  Ba = Ba - 1e-8*eye(size(Ba,1))
   ba = vec(Ba)
   # create right hand side matrix B, all constant entries of LMI
   return Aa,ba
@@ -100,7 +101,7 @@ iii = 1
   # create system matrices (create system in such a way that a stabilizing controller K exists)
   A = randn(rng,n,n)
 
-  # choose Bw in such a way that (A,Bu) is controllable
+  # choose Bu in such a way that (A,Bu) is controllable
   isControllable = false
   Bu = 0
   while !isControllable
@@ -146,7 +147,7 @@ iii = 1
   Kq = []
   Ks = [nLMI^2 n^2]
 
-  # # solve accurately once with mosek
+  # solve accurately once with mosek
   # model = Model(solver=MosekSolver())
   # @variable(model, P[1:n,1:n], SDP)
   # @variable(model, Y[1:nu,1:n])
@@ -155,7 +156,7 @@ iii = 1
   # LMI = [A*P+P*A'+Bu*Y+Y'*Bu' Bw P*Cz'+Y'*Dzu';
   #         Bw' -g*eye(nw) Dzw';
   #         Cz*P+Dzu*Y Dzw -g*eye(nz)]
-  # @SDconstraint(model, LMI <= 0)
+  # @SDconstraint(model, LMI <= -1e-8*eye(nLMI))
   # status = JuMP.solve(model)
   # objTrue = getobjectivevalue(model)
   # P = getvalue(P)
@@ -185,7 +186,9 @@ iii = 1
   P2 = getvalue(P2)
   Y2 = getvalue(Y2)
   K2 = Y2/P2
+  g2 = getvalue(g2)
   Ac2 = A+Bu*K2
+
   # check eigenvalues of c.l. system A+Bu*F
   unstableK = maximum(map(x->real(x),eig(Ac2)[1])) >= 0.
 
