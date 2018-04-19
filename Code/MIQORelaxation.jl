@@ -95,7 +95,7 @@ nn = 25
   ba = [spzeros(np,1);spzeros((np+1)^2-1,1);1]
   Pa = spzeros(np+np^2,np+np^2)
   qa = [2*q;vec(P)]
-  ra = 0
+  ra = 0.
 
   # specify cone
   Kf = 0

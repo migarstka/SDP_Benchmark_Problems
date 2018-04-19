@@ -8,7 +8,9 @@ problemTypes = []
 for f in filter(x -> !startswith(x, "."), readdir(fromPath))
     f = split(f,".")[1]
     push!(problemTypes,String(f))
-end
+ end
+# filter!(x->in(x,["SmallestCircle"]),problemTypes)
+
 
 for pType in problemTypes
     println(">>> Current ProblemType: $(pType).")

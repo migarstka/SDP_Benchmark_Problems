@@ -55,7 +55,7 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
 
 
 
- for iii =26:1:nn
+ for iii =1:1:nn
   # choose size of problem
   n = rand(rng,6:40)
   eta = abs(randn(rng))

@@ -7,24 +7,21 @@
 #         [I, xc; xc' t+γ] ⪴ 0
 #         τi ≥ 0, i+1,...,k
 
-# workspace()
-# #include("../../src/Solver.jl")
-# using JuMP, Mosek, JLD
-#using PyPlot, PyCall
-#@pyimport matplotlib.patches as patch
+workspace()
+include("../../OSSDP/Code/src/Solver.jl")
+using JuMP, Mosek, JLD
+
 
 rng = MersenneTwister(12345)
 dirPath = "../DataFiles/Julia/SmallestCircle/"
 !ispath(dirPath) && mkdir(dirPath)
-
 nn = 25
-
 
  for iii =1:1:nn
   # set dimension of ellipsoids
   n = 2
   # choose number of elipsoids
-  ne = rand(rng,2:15)
+  ne = rand(rng,3:15)
   # create random ellipsoid data
   Ae = []
   be = []
@@ -39,7 +36,7 @@ nn = 25
     P = diagm(Peigs)
     R = [cos(theta) -sin(theta); sin(theta) cos(theta)]
     P = R*P*R'
-    xc = rand(rng,2,1)*(10-(-10))-10
+    xc = rand(rng,2,1)*(10.-(-10))-10
 
     # determine corresponding matrices for sublevel representation f(x)=x'Ax+2x'b+c
     Ainv = P\eye(2)
@@ -53,7 +50,7 @@ nn = 25
     push!(xce,xc)
   end
 
-  # put problem into solver format -> P,q,Aa,ba,K
+  # put problem into solver format -> Pa,qa,Aa,ba,K
   # Define order of decision variables x=[t;xc;γ;τ1;...;τk]
   dimLMI = n+1
 
@@ -77,7 +74,7 @@ nn = 25
   M0[1:n,1:n] = eye(n)
   A2 = [vec(Mt) vec(Mxc1) vec(Mxc2) vec(Mγ) zeros(dimLMI^2,ne)]
 
-  # append LMI constraint to Augmented Data Matrix Aa and ba
+  # append LMI constraint to augmented Data Matrix Aa and ba
   Aa = [Aa;-A2]
   ba = [ba;vec(M0)]
 
@@ -105,69 +102,61 @@ nn = 25
     Aa = [Aa;A3]
     ba = [ba;-vec(M0)]
   end
-
   Pa = spzeros(size(Aa,2),size(Aa,2))
   qa = [1;zeros(size(Aa,2)-1)]
   ra = 0.
+
   # define cone dimensions
   Kf = 0
   Kl = ne
   Kq = []
   Ks = dimLMI^2*ones(ne+1)
-  # K = OSSDPTypes.Cone(0,ne,[],dimLMI^2*ones(ne+1))
-  # setOFF = OSSDPSettings(rho=0.1,sigma=1e-6,alpha=1.6,max_iter=5000,verbose=true,checkTermination=1,scaling = 0,eps_abs = 1e-5,eps_rel=1e-5,adaptive_rho=false)
-  # res1,nothing = OSSDP.solve(Pa,qa,Aa,ba,K,setOFF)
-  # xc = res1.x[2:3]
-  # γ = res1.x[4]
-  # r = sqrt(xc'*xc-γ)
 
 
-  # # plot ellipsoids
 
-  # fig = PyPlot.figure(1,facecolor="white",figsize=(12,5))
-  # ax = fig[:add_subplot](1,1,1)
-  # ax[:set_aspect]("equal")
-
-  # for i = 1:ne
-  #   # convert before plotting
-  #     xs = Float64[]
-  #     ys = Float64[]
-  #     for angle in linspace(0, 2*pi, 100)
-  #         u = [cos(angle),sin(angle)]
-  #         x = Pe[i] * u
-  #         x += xce[i]
-  #         push!(xs, x[1])
-  #         push!(ys, x[2])
-  #     end
-  #     PyPlot.plot(xs, ys, "black", linewidth=1.0)
-  # end
-  # # plot solution circle
-  #  c = patch.Circle([xc[1],xc[2]],r,ec="red",fill=false, linewidth=1.,zorder=0)
-  #  ax[:add_artist](c)
-  # PyPlot.axis([-20 20 -20 20]')
-
-  #solve accurately once with mosek
+  # solve accurately once with mosek
   model = Model(solver=MosekSolver())
   @variable(model, xc[1:2])
   @variable(model, t)
   @variable(model, g)
-  @variable(model, tau1 >= 0)
-  @variable(model, tau2 >= 0)
-
+  @variable(model, tau[1:ne] >= 0)
   @objective(model, Min, t)
   @SDconstraint(model,[eye(2) xc;xc' t+g] >= 0)
-  @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau1*[Ae[1] be[1]; be[1]' ce[1]])
-  @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau2*[Ae[2] be[2]; be[2]' ce[2]])
+  for jjj=1:ne
+    @SDconstraint(model,[eye(2) -xc;-xc' g] <= tau[jjj]*[Ae[jjj] be[jjj]; be[jjj]' ce[jjj]])
+  end
   status = JuMP.solve(model)
 
+  @test status == :Optimal
   objTrue = getobjectivevalue(model)
   xc = getvalue(xc)
   g = getvalue(g)
   radius = sqrt(xc'*xc-g)
 
-  # println("Objective value: ",objTrue)
-  # println("x = ", getvalue(x))
+  # # try mosek with qocs solver format
+  # model2 = Model(solver=MosekSolver())
+  # @variable(model2, S0[1:ne] >= 0)
+  # @variable(model2, S1[1:dimLMI,1:dimLMI],SDP)
+  # @variable(model2, S2[1:dimLMI,1:dimLMI,1:ne])
+  # @variable(model2, xc2[1:2])
+  # @variable(model2, t2)
+  # @variable(model2, g2)
+  # @variable(model2, tau2[1:ne] >= 0)
 
+  # x = [t2;xc2;g2;tau2]ss
+  # s = [S0;vec(S1)]
+  # for jjj=1:ne
+  #   s = [s;vec(S2[:,:,jjj])]
+  #   @SDconstraint(model2,S2[:,:,jjj] >= 0)
+  # end
+  # @objective(model2, Min, qa'*x)
+  # @constraint(model2, Aa*x+s.==ba)
+  # status2 = JuMP.solve(model2)
+
+  # objTrue2 = getobjectivevalue(model2)
+  # xc2 = getvalue(xc2)
+  # g2 = getvalue(g2)
+  # radius2 = sqrt(xc2'*xc2-g2)
   nr = "$(iii)"
   if iii < 10
     nr = "0$(iii)"
@@ -179,4 +168,4 @@ nn = 25
   println("$(iii)/$(nn) completed!")
 end
 
-
+end
