@@ -2,10 +2,6 @@
 # Save in Testproblems/RobustControl with an accurante
 # solution from MOSEK
 
-
- workspace()
- include("./Helper.jl")
-
 # using JuMP, Mosek, Base.Test, HelperFunctions, JLD
 # Create number of Lyapunov stable controller and a number of Hinf performance controller problems
 nnLyapunov = 0
@@ -76,7 +72,7 @@ function HinfPerformanceLMI(A,Bu,Bw,Cz,Dzw,Dzu)
       -Bw' zeros(nw,nw) -Dzw';
       zeros(nz,n) -Dzw zeros(nz,nz)]
   # add matrix with small eigenvalues to right hand side to achieve a strict inequality
-  Ba = Ba - 1e-8*eye(size(Ba,1))
+  Ba = Ba - (1e-8)*eye(size(Ba,1))
   ba = vec(Ba)
   # create right hand side matrix B, all constant entries of LMI
   return Aa,ba
@@ -116,7 +112,7 @@ iii = 1
   end
   Bw = eye(n,nw)
   Cz = randn(rng,nz,n)
-  Dzw = randn(nz,nw)
+  Dzw = randn(rng,nz,nw)
   Dzu = eye(nz,nu)
 
 
@@ -128,8 +124,8 @@ iii = 1
     qa = spzeros(n^2+nu*n,1)
     nLMI = n
     # add P > 0 constraint
-    Aa2 = [Aa; -speye(n^2) spzeros(n^2,nu*n)]
-    ba2 = [ba;spzeros(n^2)]
+    Aa = [Aa; -speye(n^2) spzeros(n^2,nu*n)]
+    ba = [ba;zeros(n^2)]
   else
     # LMI 2): Hinf performance:
     Aa,ba = HinfPerformanceLMI(A,Bu,Bw,Cz,Dzw,Dzu)
@@ -137,8 +133,8 @@ iii = 1
     Pa = spzeros(n^2+nu*n+1,n^2+nu*n+1)
     qa = [spzeros(n^2+nu*n,1);1]
     # add P > 0 constraint
-    Aa2 = [Aa; -speye(n^2) spzeros(n^2,nu*n+1)]
-    ba2 = [ba;spzeros(n^2)]
+    Aa = [Aa; -speye(n^2) spzeros(n^2,nu*n+1)]
+    ba = [ba;vec(-1e-8*eye(n))]
   end
   r = 0.
     # specify cone
@@ -147,27 +143,28 @@ iii = 1
   Kq = []
   Ks = [nLMI^2 n^2]
 
-  # solve accurately once with mosek
-  # model = Model(solver=MosekSolver())
-  # @variable(model, P[1:n,1:n], SDP)
-  # @variable(model, Y[1:nu,1:n])
-  # @variable(model, g)
-  # @objective(model, Min , g)
-  # LMI = [A*P+P*A'+Bu*Y+Y'*Bu' Bw P*Cz'+Y'*Dzu';
-  #         Bw' -g*eye(nw) Dzw';
-  #         Cz*P+Dzu*Y Dzw -g*eye(nz)]
-  # @SDconstraint(model, LMI <= -1e-8*eye(nLMI))
-  # status = JuMP.solve(model)
-  # objTrue = getobjectivevalue(model)
-  # P = getvalue(P)
-  # Y = getvalue(Y)
-  # g = getvalue(g)
-  # K = Y/P
-  # Ac = A+Bu*K
-  # eig(Ac)
+  #solve accurately once with mosek
+  model = Model(solver=MosekSolver())
+  @variable(model, P[1:n,1:n], SDP)
+  @variable(model, Y[1:nu,1:n])
+  @variable(model, g)
+  @objective(model, Min , g)
+  LMI = [A*P+P*A'+Bu*Y+Y'*Bu' Bw P*Cz'+Y'*Dzu';
+          Bw' -g*eye(nw) Dzw';
+          Cz*P+Dzu*Y Dzw -g*eye(nz)]
+  @SDconstraint(model, LMI <= -1e-8*eye(nLMI))
+  status = JuMP.solve(model)
+  objTrue = getobjectivevalue(model)
+  P = getvalue(P)
+  Y = getvalue(Y)
+  g = getvalue(g)
+  K = Y/P
+  Ac = A+Bu*K
+  eig(Ac)
 
   # compute once gain in other format
   model2 = Model(solver=MosekSolver())
+  @variable(model2, S1[1:n,1:n], SDP)
   @variable(model2, S2[1:nLMI,1:nLMI], SDP)
   @variable(model2, P2[1:n,1:n], SDP)
   @variable(model2, Y2[1:nu,1:n])
@@ -179,7 +176,7 @@ iii = 1
     @objective(model2, Min , g2)
     x2 = [vec(P2);vec(Y2);g2]
   end
-  s2 = vec(S2)
+  s2 = [vec(S2);vec(S1)]
   @constraint(model2,Aa*x2+s2.==ba)
   status = JuMP.solve(model2)
   objTrue = getobjectivevalue(model2)
@@ -190,7 +187,7 @@ iii = 1
   Ac2 = A+Bu*K2
 
   # check eigenvalues of c.l. system A+Bu*F
-  unstableK = maximum(map(x->real(x),eig(Ac2)[1])) >= 0.
+    unstableK = maximum(map(x->real(x),eig(Ac2)[1])) >= 0.
 
   # discard all the weird cases with stalling solver or unstable eigenvalues
   if status != :Optimal || unstableK
@@ -211,7 +208,7 @@ iii = 1
   iii <= nnLyapunov ? problemName = "Lyap"*nr : problemName = "Hinf"*nr
   fn = "RobustControl"*nr*".jld"
   problemType = "LMI Robust Control Problem"
-  JLD.save(dirPath*fn,"n",size(Aa2,2),"m",size(Aa2,1),"A",Aa2,"b",ba2,"P",Pa,"q",qa,"r",r,"objTrue",objTrue,"K",K2,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
+  JLD.save(dirPath*fn,"n",size(Aa,2),"m",size(Aa,1),"A",Aa,"b",ba,"P",Pa,"q",qa,"r",r,"objTrue",objTrue,"K",K2,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"nu",nu,"nz",nz,"nw",nw,"nx",n)
   println("$(iii)/$(nnLyapunov+nnHinf) completed!")
   iii+=1
 end

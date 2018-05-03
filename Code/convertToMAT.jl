@@ -1,6 +1,6 @@
 # Convert all problems from JLD format into MATLAB's MAT format
 
-using JLD, MAT
+# using JLD, MAT
 fromPath = "../DataFiles/Julia/"
 toPath = "../DataFiles/MATLAB/"
 existingFolders = readdir(toPath)
@@ -9,7 +9,7 @@ for f in filter(x -> !startswith(x, "."), readdir(fromPath))
     f = split(f,".")[1]
     push!(problemTypes,String(f))
  end
-# filter!(x->in(x,["SmallestCircle"]),problemTypes)
+ filter!(x->in(x,["RobustControl"]),problemTypes)
 
 
 for pType in problemTypes
@@ -25,13 +25,6 @@ for pType in problemTypes
     for p in problems
       # load data from JLD
       data = JLD.load("$(subDirPath)"*"$(p).jld")
-      P = data["P"]
-      q = data["q"]
-      A = data["A"]
-      b = data["b"]
-      m = data["m"]
-      n = data["n"]
-      objTrue = data["objTrue"]
 
       # check if folder already exists in MATLAB dir, otherwise create new
       if !in(pType,existingFolders)

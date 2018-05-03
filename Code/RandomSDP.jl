@@ -1,4 +1,4 @@
-# Code used to generate SDP problems with a quadratic function save in Testproblems/SDPQuad with an accurante
+# Code used to generate SDP problems with a quadratic objective save in Testproblems/SDPQuad with an accurante
 # solution from MOSEK
 # The problem data is generated based on the Optimality conditions:
 # Ax*+s*=b, s in S+, Px*+q+A'y*=0, y in S+
