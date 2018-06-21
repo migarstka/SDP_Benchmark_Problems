@@ -10,8 +10,10 @@
 # using JLD, JuMP, Mosek, Distributions
 
 # specify number of problems that start with matrix C as a perturbed correlation matrix and problems where C is a random matrix
-nnCorr = 25
-nnRand = 25
+nnCorr = 0
+nnRand = 100
+xMin = -50.
+xMax = 50.
 nn = nnCorr+nnRand
 # this function creates a matrix A that slices out the diagonal entries Xii of a vectorized square matrix x=vec(X)
 function createDiagonalExtractor(n)
@@ -44,6 +46,7 @@ function randomCorrMatrix(d, eta)
             end
             S[k,i] = p;
             S[i,k] = p;
+	    
         end
     end
     return S
@@ -55,7 +58,7 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
 
 
 
- for iii =26:1:nn
+ for iii =1:1:nn
   # choose size of problem
   n = rand(rng,6:40)
   eta = abs(randn(rng))
@@ -65,7 +68,8 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
     E  = randn(n,n)*1e-1
     C = C + (E + E')/2
   else
-    C = randn(rng,n,n)
+
+    C = xMin+randn(rng,n,n)*(xMax-xMin)
   end
 
 
