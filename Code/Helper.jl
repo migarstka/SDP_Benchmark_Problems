@@ -2,16 +2,17 @@ module HelperFunctions
 
 export generatePosDefMatrix, transposeVectorized
 
-  # generate a random pos def matrix with eigenvalues between 0.1 and 2
-  function generatePosDefMatrix(n::Int64,rng)
+  # generate a random pos def matrix with eigenvalues between aMax and aMin
+  function generatePosDefMatrix(n::Int64,rng,aMax,aMin)
       X = rand(rng,n,n)
       # any real square matrix can be QP decomposed into a orthogonal matrix and an uppertriangular matrix R
       Q, R = qr(X)
-      eigs = rand(rng,n).*(2.-0.1) .+ 0.1
+      eigs = rand(rng,n).*(aMax.-aMin) .+ aMin
       X = Q*diagm(eigs)*Q'
       X = 0.5*(X+X')
       return X
   end
+
 
   # gives you the position of Aij in vec(A) where A in R^mxn
   function vecPos(m,n,i,j)
