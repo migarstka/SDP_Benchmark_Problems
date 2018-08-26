@@ -1,11 +1,11 @@
 # Code used to generate random sdp problems with block arrow pattern
 workspace()
 include("./SparseSDPs.jl")
- using JLD, SparseSDPs, JuMP, Mosek
+ using FileIO, SparseSDPs, JuMP, Mosek
 
 
 rng = MersenneTwister(13123)
-dirPath = "../DataFiles/DecomposableProblems/BlockArrow/"
+dirPath = "../DataFiles/DecomposableProblems/BlockArrow-JLD2/"
 NONZERO_P_FLAG = false
 
 mRange = collect(5:5:75)
@@ -53,13 +53,13 @@ println(">>Start creating problems with variable number of constraints m:")
     nr = "0$(iii)"
   end
 
-  fn = "BlkArrow_varM"*nr*".jld"
+  fn = "BlkArrow_varM"*nr*".jld2"
   problemType = "BlkArrow_varM"
   problemName = "BlkArrow_varM"*nr
   extraDir = "varM/"
   !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  JLD.save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",BlkSize[1],"mconstr",mRange[iii],"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
+  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",BlkSize[1],"mconstr",mRange[iii],"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
   println("$(iii)/$(nn) completed!")
 end
 
@@ -91,13 +91,13 @@ println(">>Start creating problems with variable number of blocks l:")
     nr = "0$(iii)"
   end
 
-  fn = "BlkArrow_varL"*nr*".jld"
+  fn = "BlkArrow_varL"*nr*".jld2"
   problemType = "BlkArrow_varL"
   problemName = "BlkArrow_varL"*nr
   extraDir = "varL/"
   !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  JLD.save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",lRange[iii],"d",BlkSize[1],"mconstr",20,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
+  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",lRange[iii],"d",BlkSize[1],"mconstr",20,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
   println("$(iii)/$(nn) completed!")
 end
 
@@ -128,13 +128,13 @@ println(">>Start creating problems with variable block size d:")
     nr = "0$(iii)"
   end
 
-  fn = "BlkArrow_varD"*nr*".jld"
+  fn = "BlkArrow_varD"*nr*".jld2"
   problemType = "BlkArrow_varD"
   problemName = "BlkArrow_varD"*nr
   extraDir = "varD/"
   !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  JLD.save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",dRange[iii],"mconstr",10,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
+  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",dRange[iii],"mconstr",10,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
   println("$(iii)/$(nn) completed!")
 end
 
