@@ -1,6 +1,5 @@
-include("./Helper.jl")
 module SparseSDPs
-using HelperFunctions
+using Main.HelperFunctions, SparseArrays, LinearAlgebra,Random,QOCS
 export generateArrowMultCones, generateBandedSDP
 
 """
@@ -11,7 +10,7 @@ function generateSparseSymmetricMatrix(rng,A::SparseMatrixCSC{Int64,Int64},aMin:
   m,n = size(A)
   m !=n && error("Input matrix must be square.")
 
-  M = full(Symmetric(randn(rng,n,n)*(aMax-aMin)+aMin))
+  M = Matrix(Symmetric(randn(rng,n,n)*(aMax-aMin).+aMin))
   for i = 2:n, j=1:i-1
     if A[i,j] == 0
      M[i,j] = 0.
@@ -31,17 +30,17 @@ function generateArrowMultCones(rng,m,numCones,nBlk,BlkSize,ArrowWidth,NONZERO_P
   Ks = zeros(Int64,numCones)
 
   # generate sparsity pattern based on user definition
-  pattern = Array{SparseMatrixCSC{Int64,Int64}}(numCones)
+  pattern = Array{SparseMatrixCSC{Int64,Int64}}(undef,numCones)
   for iii=1:numCones
     dim = nBlk[iii]*BlkSize[iii]+ArrowWidth[iii]
     pattern[iii] = spzeros(dim,dim)
     p = pattern[iii]
     for k=1:nBlk[iii]
-      p[(k-1)*BlkSize[iii]+1:BlkSize[iii]*k, (k-1)*BlkSize[iii]+1:BlkSize[iii]*k] = 1
+      p[(k-1)*BlkSize[iii]+1:BlkSize[iii]*k, (k-1)*BlkSize[iii]+1:BlkSize[iii]*k] .= 1
     end
     # create the arrow head
-    p[nBlk[iii]*BlkSize[iii]+1:dim,:] = 1
-    p[:,nBlk[iii]*BlkSize[iii]+1:dim] = 1
+    p[nBlk[iii]*BlkSize[iii]+1:dim,:] .= 1
+    p[:,nBlk[iii]*BlkSize[iii]+1:dim] .= 1
     # save cone size
     Ks[iii] = dim
 
@@ -51,9 +50,9 @@ function generateArrowMultCones(rng,m,numCones,nBlk,BlkSize,ArrowWidth,NONZERO_P
   A = spzeros(numRows,m)
   # generate random problem data based on pattern
   for iii=1:m
-    Ai = Array{Float64}(0,1)
+    Ai = Array{Float64}(undef,0)
     for k= 1:numCones
-      M = generateSparseSymmetricMatrix(rng,pattern[k],-25.,25.)
+      M = generateSparseSymmetricMatrix(rng,pattern[k],-1.5,1.5)
       Ai = [Ai;vec(M)]
     end
     A[:,iii] = Ai
@@ -65,9 +64,9 @@ function generateArrowMultCones(rng,m,numCones,nBlk,BlkSize,ArrowWidth,NONZERO_P
   strue = spzeros(size(A,1))
   b = 1
   for k=1:numCones
-    Temp = generateSparseSymmetricMatrix(rng,pattern[k],-10.,10.)
+    Temp = generateSparseSymmetricMatrix(rng,pattern[k],-1.5,1.5)
     dim = size(pattern[k],1)
-    Temp = Temp + (-minimum(eigs(Temp)[1])+1)*speye(dim)
+    Temp = Temp + (-minimum(eigen(Matrix(Temp)).values)+1)*sparse(Diagonal(ones(dim)))
     e = Int(b + dim^2) - 1
     strue[b:e] = vec(Temp)
     b = e+1
@@ -76,20 +75,23 @@ function generateArrowMultCones(rng,m,numCones,nBlk,BlkSize,ArrowWidth,NONZERO_P
 
   # generate feasible dual point ytrue
   if NONZERO_P_FLAG
-    P = HelperFunctions.generatePosDefMatrix(m,rng,0.1,5)
+    P = HelperFunctions.generatePosDefMatrix(m,rng,0.1,1)
   else
     P = spzeros(m,m)
   end
 
-  ytrue = Array{Float64}(0)
+  ytrue = Array{Float64}(undef,0)
   for k=1:numCones
-    Ytrue = generatePosDefMatrix(Ks[k],rng,0.1,5)
+    Ytrue = HelperFunctions.generatePosDefMatrix(Ks[k],rng,0.1,1)
     ytrue = [ytrue;vec(Ytrue)]
   end
+
+
   q = (-P*xtrue -  A'*ytrue)[:]
+  q = q ./ 100
 
   map!(x->x^2,Ks,Ks)
-  return P,q,A,full(ba),Ks
+  return P,q,A,Vector(ba),Ks
 end
 
 

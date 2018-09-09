@@ -7,13 +7,13 @@
 #         X ⪴ 0
 
 # workspace()
-# using JLD, JuMP, Mosek, Distributions
+ using JuMP, Mosek, FileIO,SCS
 
 # specify number of problems that start with matrix C as a perturbed correlation matrix and problems where C is a random matrix
 nnCorr = 0
 nnRand = 100
-xMin = -50.
-xMax = 50.
+xMin = -1.
+xMax = 1.
 nn = nnCorr+nnRand
 # this function creates a matrix A that slices out the diagonal entries Xii of a vectorized square matrix x=vec(X)
 function createDiagonalExtractor(n)
@@ -46,36 +46,29 @@ function randomCorrMatrix(d, eta)
             end
             S[k,i] = p;
             S[i,k] = p;
-	    
+
         end
     end
     return S
 end
 
 rng = MersenneTwister(12345)
-dirPath = "../DataFiles/Julia/ClosestCorr/"
+dirPath = "../DataFiles/Julia/ClosestCorr-Benchmark-JLD2/"
 !ispath(dirPath) && mkdir(dirPath)
 
-
+nRange = [100;250;500;750;1000;1250;1500;1750;2000;2500]
 
  for iii =1:1:nn
   # choose size of problem
-  n = rand(rng,6:40)
+  n = nRange[iii]
   eta = abs(randn(rng))
-  # create random correlation matrix and perturb it
-  if iii<=nnCorr
-    C = randomCorrMatrix(n,eta)
-    E  = randn(n,n)*1e-1
-    C = C + (E + E')/2
-  else
 
-    C = xMin+randn(rng,n,n)*(xMax-xMin)
-  end
 
+  C = xMin+randn(rng,n,n)*(xMax-xMin)
 
   c = vec(C)
 
-  isposdef(C) && warn("The perturbed correlation matrix is still pos def.")
+  #isposdef(C) && warn("The perturbed correlation matrix is still pos def.")
 
   # put problem into solver format
   # min   x'Ix - 1*t
@@ -93,11 +86,13 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
   b = [ones(n);zeros(n2)]
   A = createDiagonalExtractor(n)
   Aa = [A; -speye(n2)]
+
   # specify cone
   Kf = n
   Kl = 0
   Kq = []
   Ks = [n^2]
+
   # # solve accurately once with mosek
   model = Model(solver=MosekSolver())
   @variable(model, X[1:n,1:n], SDP)
@@ -106,12 +101,25 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
   @objective(model, Min, t)
   @constraint(model, norm(x-c) <= t)
   @constraint(model, A*x.== b[1:n])
-  status = JuMP.solve(model)
+  MOSEKtime = @elapsed status = JuMP.solve(model)
 
   # correct optimal objective value since slightly different problem is solved
   objTrue = getobjectivevalue(model)
-  objCorrected = 0.5*objTrue^2
-  solTrue = getvalue(x)
+  MOSEKcost = 0.5*objTrue^2
+
+
+  model = Model(solver=SCSSolver(eps=1e-3))
+  @variable(model, X[1:n,1:n], SDP)
+  @variable(model, t)
+  x = vec(X)
+  @objective(model, Min, t)
+  @constraint(model, norm(x-c) <= t)
+  @constraint(model, A*x.== b[1:n])
+  SCStime = @elapsed status = JuMP.solve(model)
+
+  # correct optimal objective value since slightly different problem is solved
+  objTrue = getobjectivevalue(model)
+  SCScost = 0.5*objTrue^2
   # println("Objective value: ",objTrue)
   # println("Corrected objective value: ", objCorrected)
   # println("x = ", getvalue(x))
@@ -121,11 +129,11 @@ dirPath = "../DataFiles/Julia/ClosestCorr/"
     nr = "0$(iii)"
   end
 
-  fn = "ClosestCorr"*nr*".jld"
+  fn = "ClosestCorr_N$(n).jld2"
   problemType = "Closest Correlation Matrix"
-  problemName = "ClosestCorr"*nr
+  problemName = "ClosestCorr_N$(n)"
 
-  JLD.save(dirPath*fn,"n",n,"m",m,"A",Aa,"b",b,"P",P,"q",q,"r",r,"C",C,"objTrue",objCorrected,"solTrue",solTrue,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
+  save(dirPath*fn,"n",n,"m",m,"A",Aa,"b",b,"P",P,"q",q,"r",r,"C",C,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Ks",Ks,"MOSEKtime",MOSEKtime,"MOSEKcost",MOSEKcost,"SCStime",SCStime,"SCScost",SCScost)
   println("$(iii)/$(nn) completed!")
 end
 

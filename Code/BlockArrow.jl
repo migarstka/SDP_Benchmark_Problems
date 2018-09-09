@@ -1,67 +1,67 @@
 # Code used to generate random sdp problems with block arrow pattern
-workspace()
+include("./Helper.jl")
 include("./SparseSDPs.jl")
- using FileIO, SparseSDPs, JuMP, Mosek
+ using FileIO, .SparseSDPs, LinearAlgebra, SparseArrays, Random
 
 
 rng = MersenneTwister(13123)
-dirPath = "../DataFiles/DecomposableProblems/BlockArrow-JLD2/"
+dirPath = "../DataFiles/DecomposableProblems/BlockArrow-JLD2-bigL/"
 NONZERO_P_FLAG = false
 
 mRange = collect(5:5:75)
-lRange = collect(3:3:45)
+lRange = collect(3:3:60)
 dRange = collect(2:1:16)
 
+# doesnt work yet with Julia v1.0
+# function solveWithMOSEK(P,q,A,b,Ks)
+#   m,n = size(A)
+#   cDim = Int(sqrt(m))
+#   model = Model(solver=MosekSolver())
+#   @variable(model, x[1:n])
+#   @variable(model, S[1:cDim,1:cDim],SDP)
+#   s = vec(S)
+#   @objective(model, Min,q'*x)
+#   @constraint(model, A*x.+s .== b)
+#   tic()
+#   status = JuMP.solve(model)
+#   solveTime = toq()
+#   return getobjectivevalue(model),solveTime
+# end
 
-function solveWithMOSEK(P,q,A,b,Ks)
-  m,n = size(A)
-  cDim = Int(sqrt(m))
-  model = Model(solver=MosekSolver())
-  @variable(model, x[1:n])
-  @variable(model, S[1:cDim,1:cDim],SDP)
-  s = vec(S)
-  @objective(model, Min,q'*x)
-  @constraint(model, A*x.+s .== b)
-  tic()
-  status = JuMP.solve(model)
-  solveTime = toq()
-  return getobjectivevalue(model),solveTime
-end
 
+# # --------------------------------------
+# # Variable number of constraints m
+# # --------------------------------------
+# println(">>Start creating problems with variable number of constraints m:")
+#  for iii =1:1:length(mRange)
+#   nn = length(mRange)
+#   numCones = 1
+#   numBlocks = [10]
+#   BlkSize = [4]
+#   m = mRange[iii]
+#   ArrowWidth = [4]
 
-# --------------------------------------
-# Variable number of constraints m
-# --------------------------------------
-println(">>Start creating problems with variable number of constraints m:")
- for iii =1:1:length(mRange)
-  nn = length(mRange)
-  numCones = 1
-  numBlocks = [10]
-  BlkSize = [4]
-  m = mRange[iii]
-  ArrowWidth = [4]
+#   P,q,A,b,Ks = generateArrowMultCones(rng, m,numCones,numBlocks,BlkSize,ArrowWidth,NONZERO_P_FLAG);
+#   Kf  = 0
+#   Kl = 0
+#   Kq = []
+#   r = 0.
+#   m,n = size(A)
 
-  P,q,A,b,Ks = generateArrowMultCones(rng, m,numCones,numBlocks,BlkSize,ArrowWidth,NONZERO_P_FLAG);
-  Kf  = 0
-  Kl = 0
-  Kq = []
-  r = 0.
-  m,n = size(A)
-  objTrue,solveTime = solveWithMOSEK(P,q,A,b,Ks)
-  nr = "$(iii)"
-  if iii < 10
-    nr = "0$(iii)"
-  end
+#   nr = "$(iii)"
+#   if iii < 10
+#     nr = "0$(iii)"
+#   end
 
-  fn = "BlkArrow_varM"*nr*".jld2"
-  problemType = "BlkArrow_varM"
-  problemName = "BlkArrow_varM"*nr
-  extraDir = "varM/"
-  !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
+#   fn = "BlkArrow_varM"*nr*".jld2"
+#   problemType = "BlkArrow_varM"
+#   problemName = "BlkArrow_varM"*nr
+#   extraDir = "varM/"
+#   #!ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",BlkSize[1],"mconstr",mRange[iii],"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
-  println("$(iii)/$(nn) completed!")
-end
+#   save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",BlkSize[1],"mconstr",mRange[iii],"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
+#   println("$(iii)/$(nn) completed!")
+# end
 
 # --------------------------------------
 # Variable number of number of blocks l
@@ -74,9 +74,9 @@ println(">>Start creating problems with variable number of blocks l:")
 
   numCones = 1
   numBlocks = lRange[iii]
-  BlkSize = [4]
+  BlkSize = [10]
   m = 20
-  ArrowWidth = [4]
+  ArrowWidth = [20]
 
   P,q,A,b,Ks = generateArrowMultCones(rng, m,numCones,numBlocks,BlkSize,ArrowWidth,NONZERO_P_FLAG);
   Kf  = 0
@@ -84,7 +84,8 @@ println(">>Start creating problems with variable number of blocks l:")
   Kq = []
   r = 0.
   m,n = size(A)
-  objTrue,solveTime = solveWithMOSEK(P,q,A,b,Ks)
+  objTrue = 1
+  solveTime = 1 #solveWithMOSEK(P,q,A,b,Ks)
 
   nr = "$(iii)"
   if iii < 10
@@ -95,47 +96,48 @@ println(">>Start creating problems with variable number of blocks l:")
   problemType = "BlkArrow_varL"
   problemName = "BlkArrow_varL"*nr
   extraDir = "varL/"
-  !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
+  #!ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",lRange[iii],"d",BlkSize[1],"mconstr",20,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
+  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",lRange[iii],"d",BlkSize[1],"mconstr",20,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
   println("$(iii)/$(nn) completed!")
 end
 
-# --------------------------------------
-# Variable Block size d
-# --------------------------------------
-println(">>Start creating problems with variable block size d:")
+# # --------------------------------------
+# # Variable Block size d
+# # --------------------------------------
+# println(">>Start creating problems with variable block size d:")
 
-# variable constraint number problems
- for iii =1:1:length(dRange)
-  nn = length(dRange)
-  numCones = 1
-  numBlocks = [10]
-  BlkSize = [dRange[iii]]
-  m = 10
-  ArrowWidth = [4]
+# # variable constraint number problems
+#  for iii =1:1:length(dRange)
+#   nn = length(dRange)
+#   numCones = 1
+#   numBlocks = [10]
+#   BlkSize = [dRange[iii]]
+#   m = 10
+#   ArrowWidth = [4]
 
-  P,q,A,b,Ks = generateArrowMultCones(rng, m,numCones,numBlocks,BlkSize,ArrowWidth,NONZERO_P_FLAG);
-  Kf  = 0
-  Kl = 0
-  Kq = []
-  r = 0.
-  m,n = size(A)
-  objTrue,solveTime = solveWithMOSEK(P,q,A,b,Ks)
+#   P,q,A,b,Ks = generateArrowMultCones(rng, m,numCones,numBlocks,BlkSize,ArrowWidth,NONZERO_P_FLAG);
+#   Kf  = 0
+#   Kl = 0
+#   Kq = []
+#   r = 0.
+#   m,n = size(A)
+#   objTrue = 1
+#   solveTime =1 # solveWithMOSEK(P,q,A,b,Ks)
 
-  nr = "$(iii)"
-  if iii < 10
-    nr = "0$(iii)"
-  end
+#   nr = "$(iii)"
+#   if iii < 10
+#     nr = "0$(iii)"
+#   end
 
-  fn = "BlkArrow_varD"*nr*".jld2"
-  problemType = "BlkArrow_varD"
-  problemName = "BlkArrow_varD"*nr
-  extraDir = "varD/"
-  !ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
+#   fn = "BlkArrow_varD"*nr*".jld2"
+#   problemType = "BlkArrow_varD"
+#   problemName = "BlkArrow_varD"*nr
+#   extraDir = "varD/"
+#   #!ispath(dirPath*extraDir) && mkdir(dirPath*extraDir)
 
-  save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",dRange[iii],"mconstr",10,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks,"objTrue",objTrue,"solveTime",solveTime)
-  println("$(iii)/$(nn) completed!")
-end
+#   save(dirPath*extraDir*fn,"n",n,"m",m,"A",A,"b",b,"P",P,"q",q,"r",r,"l",numBlocks[1],"d",dRange[iii],"mconstr",10,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Kl",Kl,"Kq",Kq,"Ks",Ks)
+#   println("$(iii)/$(nn) completed!")
+# end
 
 

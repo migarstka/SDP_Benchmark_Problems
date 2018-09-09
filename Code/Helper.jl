@@ -1,14 +1,14 @@
 module HelperFunctions
-
+using LinearAlgebra
 export generatePosDefMatrix, transposeVectorized
 
   # generate a random pos def matrix with eigenvalues between aMax and aMin
-  function generatePosDefMatrix(n::Int64,rng,aMax,aMin)
-      X = rand(rng,n,n)
+  function generatePosDefMatrix(n::Int64,rng,aMin,aMax)
+  X = rand(rng,n,n)
       # any real square matrix can be QP decomposed into a orthogonal matrix and an uppertriangular matrix R
       Q, R = qr(X)
       eigs = rand(rng,n).*(aMax.-aMin) .+ aMin
-      X = Q*diagm(eigs)*Q'
+      X = Q*Diagonal(eigs)*Q'
       X = 0.5*(X+X')
       return X
   end

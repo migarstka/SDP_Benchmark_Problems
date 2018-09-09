@@ -1,8 +1,8 @@
 # Convert all problems from JLD format into MATLAB's MAT format
 
 using JLD, MAT
-fromPath = "../DataFiles/Julia/"
-toPath = "../DataFiles/MATLAB/"
+fromPath = "../DataFiles/DecomposableProblems/BlockArrow/"
+toPath = "../DataFiles/DecomposableProblems/BlockArrow-MATLAB/"
 existingFolders = readdir(toPath)
 problemTypes = []
 for f in filter(x -> !startswith(x, "."), readdir(fromPath))
@@ -23,13 +23,22 @@ for pType in problemTypes
     for p in problems
       # load data from JLD
       data = JLD.load("$(subDirPath)"*"$(p).jld")
-      P = data["P"]
-      q = data["q"]
-      A = data["A"]
-      b = data["b"]
-      m = data["m"]
-      n = data["n"]
-      objTrue = data["objTrue"]
+      # P = data["P"]
+      # q = data["q"]
+      # A = data["A"]
+      # b = data["b"]
+      # m = data["m"]
+      # n = data["n"]
+      # l = data["l"]
+      # d = data["d"]
+      # mconstr = data["mconstr"]
+      # problemType = data["problemType"]
+      # problemName = data["problemName"]
+      # Kf = data["Kf"]
+      # Kl = data["Kl"]
+      # Kq = data["Kq"]
+      # Ks = data["Ks"]
+      # objTrue = data["objTrue"]
 
       # check if folder already exists in MATLAB dir, otherwise create new
       if !in(pType,existingFolders)
