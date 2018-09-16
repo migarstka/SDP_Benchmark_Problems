@@ -6,8 +6,8 @@
 # s.t.    Xii = 1
 #         X ⪴ 0
 
-# workspace()
- using JuMP, Mosek, FileIO,SCS
+ workspace()
+using JuMP, Mosek, FileIO,SCS
 
 # specify number of problems that start with matrix C as a perturbed correlation matrix and problems where C is a random matrix
 nnCorr = 0
@@ -53,10 +53,10 @@ function randomCorrMatrix(d, eta)
 end
 
 rng = MersenneTwister(12345)
-dirPath = "../DataFiles/Julia/ClosestCorr-Benchmark-JLD2/"
+dirPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark/"
 !ispath(dirPath) && mkdir(dirPath)
 
-nRange = [100;250;500;750;1000;1250;1500;1750;2000;2500]
+nRange = collect(10:10:120)
 
  for iii =1:1:nn
   # choose size of problem
@@ -64,7 +64,7 @@ nRange = [100;250;500;750;1000;1250;1500;1750;2000;2500]
   eta = abs(randn(rng))
 
 
-  C = xMin+randn(rng,n,n)*(xMax-xMin)
+  C = xMin+rand(rng,n,n)*(xMax-xMin)
 
   c = vec(C)
 
@@ -108,7 +108,7 @@ nRange = [100;250;500;750;1000;1250;1500;1750;2000;2500]
   MOSEKcost = 0.5*objTrue^2
 
 
-  model = Model(solver=SCSSolver(eps=1e-3))
+  model = Model(solver=SCSSolver(eps=1e-3,verbose=false))
   @variable(model, X[1:n,1:n], SDP)
   @variable(model, t)
   x = vec(X)
