@@ -6,12 +6,11 @@
 # s.t.    Xii = 1
 #         X ⪴ 0
 
- workspace()
-using JuMP, Mosek, FileIO,SCS
+using JuMP, Mosek, FileIO,SCS, Random, LinearAlgebra, SparseArrays, MathOptInterfaceMosek
 
 # specify number of problems that start with matrix C as a perturbed correlation matrix and problems where C is a random matrix
-nnCorr = 0
-nnRand = 100
+#nnCorr = 0
+#nnRand = 100
 xMin = -1.
 xMax = 1.
 nn = nnCorr+nnRand
@@ -52,19 +51,19 @@ function randomCorrMatrix(d, eta)
     return S
 end
 
-rng = MersenneTwister(12345)
-dirPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark/"
+rng = Random.MersenneTwister(12345);
+dirPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark-v1/"
 !ispath(dirPath) && mkdir(dirPath)
 
 nRange = collect(10:10:120)
-
+nn = length(nRange)
  for iii =1:1:nn
   # choose size of problem
   n = nRange[iii]
   eta = abs(randn(rng))
 
 
-  C = xMin+rand(rng,n,n)*(xMax-xMin)
+  C = xMin .+ rand(rng, n, n) .* (xMax - xMin)
 
   c = vec(C)
 
@@ -80,12 +79,12 @@ nRange = collect(10:10:120)
   n2 = n^2
   m = n+n2
 
-  P = speye(n2)
+  P = sparse(1.0I,n2,n2)
   q = -vec(C)
   r = 0.5*vec(C)'*vec(C)
   b = [ones(n);zeros(n2)]
   A = createDiagonalExtractor(n)
-  Aa = [A; -speye(n2)]
+  Aa = [A; -sparse(1.0I,n2,n2)]
 
   # specify cone
   Kf = n
@@ -93,45 +92,51 @@ nRange = collect(10:10:120)
   Kq = []
   Ks = [n^2]
 
-  # # solve accurately once with mosek
-  model = Model(solver=MosekSolver())
-  @variable(model, X[1:n,1:n], SDP)
-  @variable(model, t)
-  x = vec(X)
-  @objective(model, Min, t)
-  @constraint(model, norm(x-c) <= t)
-  @constraint(model, A*x.== b[1:n])
-  MOSEKtime = @elapsed status = JuMP.solve(model)
+  # # # solve accurately once with mosek
+  # model = Model(with_optimizer(MosekOptimizer));
+  # @variable(model, X[1:n,1:n]);
+  # @variable(model, t);
+  # x = vec(X);
+  # @objective(model, Min, t);
+  # @constraint(model,  [x-c,y,z] in SecondOrderCone())
 
-  # correct optimal objective value since slightly different problem is solved
-  objTrue = getobjectivevalue(model)
-  MOSEKcost = 0.5*objTrue^2
+  # @constraint(model, norm(x-c) <= t);
+  # @constraint(model, A*x.== b[1:n]);
+  # @SDconstraint(model, X >= 0);
+  # MOSEKtime = @elapsed status = JuMP.optimize!(model)
+
+  # # correct optimal objective value since slightly different problem is solved
+  # objTrue = getobjectivevalue(model)
+  # MOSEKcost = 0.5*objTrue^2
 
 
-  model = Model(solver=SCSSolver(eps=1e-3,verbose=false))
-  @variable(model, X[1:n,1:n], SDP)
-  @variable(model, t)
-  x = vec(X)
-  @objective(model, Min, t)
-  @constraint(model, norm(x-c) <= t)
-  @constraint(model, A*x.== b[1:n])
-  SCStime = @elapsed status = JuMP.solve(model)
+  # model = Model(solver=SCSSolver(eps=1e-3,verbose=false))
+  # @variable(model, X[1:n,1:n], SDP)
+  # @variable(model, t)
+  # x = vec(X)
+  # @objective(model, Min, t)
+  # @constraint(model, norm(x-c) <= t)
+  # @constraint(model, A*x.== b[1:n])
+  # SCStime = @elapsed status = JuMP.solve(model)
 
-  # correct optimal objective value since slightly different problem is solved
-  objTrue = getobjectivevalue(model)
-  SCScost = 0.5*objTrue^2
+  # # correct optimal objective value since slightly different problem is solved
+  # objTrue = getobjectivevalue(model)
+  # SCScost = 0.5*objTrue^2
   # println("Objective value: ",objTrue)
   # println("Corrected objective value: ", objCorrected)
   # println("x = ", getvalue(x))
-
-  nr = "$(iii)"
-  if iii < 10
-    nr = "0$(iii)"
+MOSEKtime = 0.
+MOSEKcost = 0.
+SCStime = 0.
+SCScost = 0.
+  nr = "$(n)"
+  if n < 100
+    nr = "0$(n)"
   end
 
-  fn = "ClosestCorr_N$(n).jld2"
+  fn = "ClosestCorr_N$(nr).jld2"
   problemType = "Closest Correlation Matrix"
-  problemName = "ClosestCorr_N$(n)"
+  problemName = "ClosestCorr_N$(nr)"
 
   save(dirPath*fn,"n",n,"m",m,"A",Aa,"b",b,"P",P,"q",q,"r",r,"C",C,"problemType",problemType,"problemName",problemName,"Kf",Kf,"Ks",Ks,"MOSEKtime",MOSEKtime,"MOSEKcost",MOSEKcost,"SCStime",SCStime,"SCScost",SCScost)
   println("$(iii)/$(nn) completed!")
