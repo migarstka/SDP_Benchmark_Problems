@@ -13,7 +13,7 @@ using JuMP, Mosek, FileIO,SCS, Random, LinearAlgebra, SparseArrays, MathOptInter
 #nnRand = 100
 xMin = -1.
 xMax = 1.
-nn = nnCorr+nnRand
+#nn = nnCorr+nnRand
 # this function creates a matrix A that slices out the diagonal entries Xii of a vectorized square matrix x=vec(X)
 function createDiagonalExtractor(n)
   A = spzeros(n,n^2)
@@ -55,7 +55,7 @@ rng = Random.MersenneTwister(12345);
 dirPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark-v1/"
 !ispath(dirPath) && mkdir(dirPath)
 
-nRange = collect(10:10:120)
+nRange = collect(25:25:800)
 nn = length(nRange)
  for iii =1:1:nn
   # choose size of problem
@@ -66,16 +66,6 @@ nn = length(nRange)
   C = xMin .+ rand(rng, n, n) .* (xMax - xMin)
 
   c = vec(C)
-
-  #isposdef(C) && warn("The perturbed correlation matrix is still pos def.")
-
-  # put problem into solver format
-  # min   x'Ix - 1*t
-  # s.t.  Ax + s1 = 0
-  #       x = s4
-  #       -t <= c'*x <=t
-  # s1 in 0, s2,s3 in R+, s4 in SDPcone
-
   n2 = n^2
   m = n+n2
 
@@ -93,42 +83,22 @@ nn = length(nRange)
   Ks = [n^2]
 
   # # # solve accurately once with mosek
-  # model = Model(with_optimizer(MosekOptimizer));
-  # @variable(model, X[1:n,1:n]);
-  # @variable(model, t);
-  # x = vec(X);
-  # @objective(model, Min, t);
-  # @constraint(model,  [x-c,y,z] in SecondOrderCone())
+  model = Model(with_optimizer(MosekOptimizer));
+  @variable(model, X[1:n,1:n]);
+  @variable(model, t);
+  x = vec(X);
+  @objective(model, Min, t);
+  @constraint(model,  test,[t;x-c] in SecondOrderCone());
+  @constraint(model, A*x.== b[1:n]);
+  @SDconstraint(model, X >= 0);
+  MOSEKtime = @elapsed status = JuMP.optimize!(model);
 
-  # @constraint(model, norm(x-c) <= t);
-  # @constraint(model, A*x.== b[1:n]);
-  # @SDconstraint(model, X >= 0);
-  # MOSEKtime = @elapsed status = JuMP.optimize!(model)
+  # correct optimal objective value since slightly different problem is solved
+  objTrue = JuMP.objective_value(model)
+  MOSEKcost = 0.5*objTrue^2
 
-  # # correct optimal objective value since slightly different problem is solved
-  # objTrue = getobjectivevalue(model)
-  # MOSEKcost = 0.5*objTrue^2
-
-
-  # model = Model(solver=SCSSolver(eps=1e-3,verbose=false))
-  # @variable(model, X[1:n,1:n], SDP)
-  # @variable(model, t)
-  # x = vec(X)
-  # @objective(model, Min, t)
-  # @constraint(model, norm(x-c) <= t)
-  # @constraint(model, A*x.== b[1:n])
-  # SCStime = @elapsed status = JuMP.solve(model)
-
-  # # correct optimal objective value since slightly different problem is solved
-  # objTrue = getobjectivevalue(model)
-  # SCScost = 0.5*objTrue^2
-  # println("Objective value: ",objTrue)
-  # println("Corrected objective value: ", objCorrected)
-  # println("x = ", getvalue(x))
-MOSEKtime = 0.
-MOSEKcost = 0.
-SCStime = 0.
-SCScost = 0.
+  SCStime = 0.
+  SCScost = 0.
   nr = "$(n)"
   if n < 100
     nr = "0$(n)"

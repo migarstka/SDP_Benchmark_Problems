@@ -1,8 +1,8 @@
 # Convert all problems from JLD format into MATLAB's MAT format
 
 using FileIO, MAT
-fromPath = "../DataFiles/JLD2/QP/QP-Lasso/"
-toPath = "../DataFiles/JLD2/QP/QP-Lasso-MATLAB/"
+fromPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark-v1/"
+toPath = "../DataFiles/JLD2/SDP/ClosestCorr-Benchmark-v1-MATLAB/"
 
 problems = []
   for f in filter(x -> endswith(x, ".jld2"), readdir(fromPath))
